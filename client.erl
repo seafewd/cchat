@@ -14,13 +14,13 @@
 % Do not change the signature of this function.
 initial_state(Nick, GUIAtom, ServerAtom) ->
     #client_st{
-        gui = GUIAtom,
         nick = Nick,
+        gui = GUIAtom,
         server = ServerAtom,
         channels = []
     }.
 
-% send request to destination
+% send a general request to destination
 send(Destination, Request) ->
     try genserver:request(Destination, Request) of
         Response -> Response
@@ -37,15 +37,16 @@ send(Destination, Request) ->
 %   - NewState is the updated state of the client
 
 % Join channel
+% send a join request to server with this Pid, client nick and channel
 handle(St, {join, Channel}) ->
     case send(St#client_st.server, {join, self(), St#client_st.nick, Channel}) of
         ok ->
+            % prepend new channel name to channel list and update client's list of channels
             NewChannelsList = [Channel | St#client_st.channels],
             {reply, ok, St#client_st{channels=NewChannelsList}};
         Error ->
             {reply, Error, St}
         end;
-    % {reply, ok, St} ;
 
 % Leave channel
 handle(St, {leave, Channel}) ->
