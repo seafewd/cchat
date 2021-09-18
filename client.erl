@@ -6,7 +6,8 @@
 -record(client_st, {
     gui, % atom of the GUI process
     nick, % nick/username of the client
-    server % atom of the chat server
+    server, % atom of the chat server
+    channels % list of channels in use by client
 }).
 
 % Return an initial state record. This is called from GUI.
@@ -15,8 +16,17 @@ initial_state(Nick, GUIAtom, ServerAtom) ->
     #client_st{
         gui = GUIAtom,
         nick = Nick,
-        server = ServerAtom
+        server = ServerAtom,
+        channels = []
     }.
+
+% send request to destination
+send(Destination, Request) ->
+    try genserver:request(Destination, Request) of
+        Response -> Response
+    catch
+        error:_ -> {error, server_unreachable, "Server unreachable."}
+    end.
 
 % handle/2 handles each kind of request from GUI
 % Parameters:
@@ -28,9 +38,14 @@ initial_state(Nick, GUIAtom, ServerAtom) ->
 
 % Join channel
 handle(St, {join, Channel}) ->
-    % TODO: Implement this function
+    case send(St#client_st.server, {join, self(), St#client_st.nick, Channel}) of
+        ok ->
+            NewChannelsList = [Channel | St#client_st.channels],
+            {reply, ok, St#client_st{channels=NewChannelsList}};
+        Error ->
+            {reply, Error, St}
+        end;
     % {reply, ok, St} ;
-    {reply, {error, not_implemented, "join not implemented"}, St} ;
 
 % Leave channel
 handle(St, {leave, Channel}) ->
