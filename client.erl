@@ -20,12 +20,12 @@ initial_state(Nick, GUIAtom, ServerAtom) ->
         channels = []
     }.
 
-% send a general request to destination
+% send a general request to destination (server)
 send(Destination, Request) ->
     try genserver:request(Destination, Request) of
         Response -> Response
     catch
-        error:_ -> {error, server_unreachable, "Server unreachable."}
+        error:connection -> {error, server_not_reached, "Can't reach server."}
     end.
 
 % handle/2 handles each kind of request from GUI
@@ -48,36 +48,42 @@ handle(St, {join, Channel}) ->
             {reply, Error, St}
         end;
 
-% Leave channel
+% send leave channel request
 handle(St, {leave, Channel}) ->
     case send(St#client_st.server, {leave, self(), Channel}) of
         ok ->
-            {reply, ok, St};
+            NewChannelsList = lists:delete(Channel, St#client_st.channels),
+            {reply, ok, St#client_st{channels = NewChannelsList}};
         Error ->
             {reply, Error, St}
         end;
 
 % Sending message (from GUI, to channel)
 handle(St, {message_send, Channel, Msg}) ->
-    case lists:member(Channel, St#client_st.channels) of
-        true ->
-            Reply = send(list_to_atom(Channel), {message_send, self(), St#client_st.nick, Msg}),
-            {reply, Reply, St};
-        false ->
-            {reply, {error, user_not_joined, "User isn't a member of " ++ Channel ++ " ."}}
+    % is server reachable?
+    % request to send a message
+    Request = send(list_to_atom(Channel), {message_send, self(), St#client_st.nick, Msg}),
+    case Request of
+        ok ->
+            % check if client is a member of channel
+            case lists:member(Channel, St#client_st.channels) of
+                true ->
+                    {reply, Request, St};
+                false ->
+                    % user hasn't joined the channel - can't send message
+                    {reply, {error, user_not_joined, "User isn't a member of " ++ Channel ++ "."}, St}
+            end;
+        Error -> {error, Error, "Connection error - server not reached.", St}
     end;
 
 % change nickname
-handle(St, {change_nick, NewNick}) ->
-    case send(St#client_st.server, {change_nick, St#client_st.nick, NewNick}) of
+handle(St, {nick, NewNick}) ->
+    case send(St#client_st.server, {nick, St#client_st.nick, NewNick}) of
+        % all good, change nickname
         ok -> {reply, ok, St#client_st{nick = NewNick}};
+        % error, return state
         Error -> {reply, Error, St}
     end;
-
-% This case is only relevant for the distinction assignment!
-% Change nick (no check, local only)
-handle(St, {nick, NewNick}) ->
-    {reply, ok, St#client_st{nick = NewNick}} ;
 
 % ---------------------------------------------------------------------------
 % The cases below do not need to be changed...
@@ -89,7 +95,7 @@ handle(St, whoami) ->
 
 % Incoming message (from channel, to GUI)
 handle(St = #client_st{gui = GUI}, {message_receive, Channel, Nick, Msg}) ->
-    gen_server:call(GUI, {message_receive, Channel, Nick++"> "++Msg}),
+    gen_server:call(GUI, {message_receive, Channel, Nick ++ "> " ++ Msg}),
     {reply, ok, St} ;
 
 % Quit client via GUI

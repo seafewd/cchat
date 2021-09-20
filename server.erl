@@ -40,11 +40,15 @@ handle(St, {message_send, ClientPid, Channel}) ->
 	{reply, Response, St};
 
 % client requests to change nickname
-handle(St, {change_nick, OldNick, NewNick}) ->
+handle(St, {nick, OldNick, NewNick}) ->
 	case lists:member(NewNick, St#state.nicknames) of
+		% OldNick == NewNick
 		true when OldNick =:= NewNick -> {reply, ok, St};
+		% nickname is already in use by another client
 		true -> {reply, {error, nick_taken, "Nickname " ++ NewNick ++ " is already taken. Try another."}, St};
+		% client updates with new username
 		false ->
+			% delete old nickname, add new nickname
 			NewNicksList = [NewNick | lists:delete(OldNick, St#state.nicknames)],
 			{reply, ok, St#state{nicknames = NewNicksList}}
 	end;
@@ -59,18 +63,17 @@ handle(St, {leave, ClientPid, Channel}) ->
 handle(St, {quit, ClientNick}) ->
 	% delete nickname from members list
 	NewNicknameList = lists:delete(ClientNick, St#state.nicknames),
-	% todo: for all channels in client channels, leave channel
 	{reply, ok, St#state{nicknames=NewNicknameList}};
 
 % catch-all request
-handle(_, _) ->
-	{reply, {error, unrecognized_command, "The server can't handle this request. DEVS PLS."}}.
+handle(St, _) ->
+	{reply, {error, unrecognized_command, "The server can't handle this request. DEVS PLS."}, St}.
 
 
 % Start a new server process with the given name
 % Do not change the signature of this function.
 start(ServerAtom) ->
-    Server = genserver:start(ServerAtom, initialState(), fun handle/2).
+    genserver:start(ServerAtom, initialState(), fun handle/2).
 
 % Stop the server process registered to the given name,
 stop(ServerAtom) ->
