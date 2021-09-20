@@ -43,22 +43,36 @@ handle(St, {join, Channel}) ->
         ok ->
             % prepend new channel name to channel list and update client's list of channels
             NewChannelsList = [Channel | St#client_st.channels],
-            {reply, ok, St#client_st{channels=NewChannelsList}};
+            {reply, ok, St#client_st{channels = NewChannelsList}};
         Error ->
             {reply, Error, St}
         end;
 
 % Leave channel
 handle(St, {leave, Channel}) ->
-    % TODO: Implement this function
-    % {reply, ok, St} ;
-    {reply, {error, not_implemented, "leave not implemented"}, St} ;
+    case send(St#client_st.server, {leave, self(), Channel}) of
+        ok ->
+            {reply, ok, St};
+        Error ->
+            {reply, Error, St}
+        end;
 
 % Sending message (from GUI, to channel)
 handle(St, {message_send, Channel, Msg}) ->
-    % TODO: Implement this function
-    % {reply, ok, St} ;
-    {reply, {error, not_implemented, "message sending not implemented"}, St} ;
+    case lists:member(Channel, St#client_st.channels) of
+        true ->
+            Reply = send(list_to_atom(Channel), {message_send, self(), St#client_st.nick, Msg}),
+            {reply, Reply, St};
+        false ->
+            {reply, {error, user_not_joined, "User isn't a member of " ++ Channel ++ " ."}}
+    end;
+
+% change nickname
+handle(St, {change_nick, NewNick}) ->
+    case send(St#client_st.server, {change_nick, St#client_st.nick, NewNick}) of
+        ok -> {reply, ok, St#client_st{nick = NewNick}};
+        Error -> {reply, Error, St}
+    end;
 
 % This case is only relevant for the distinction assignment!
 % Change nick (no check, local only)
@@ -84,5 +98,5 @@ handle(St, quit) ->
     {reply, ok, St} ;
 
 % Catch-all for any unhandled requests
-handle(St, Data) ->
+handle(St, _) ->
     {reply, {error, not_implemented, "Client does not handle this command"}, St} .
