@@ -41,12 +41,20 @@ handle(St, {leave, ClientPid}) ->
     end;
 
 % handle client message send
-handle(St, {message_send, ClientPid, ClientNick, Msg}) ->
-    % don't send the message to ourselves
-    Recipients = lists:delete(ClientPid, St#ch_state.members),
-    Data = {request, self(), make_ref(), {message_receive, St#ch_state.channelName, ClientNick, Msg}},
-    lists:foreach((fun(Member) -> Member ! Data end), Recipients),
-    {reply, ok, St};
+handle(St, {message_send, ClientNick, ClientPid, Msg}) ->
+    % check if client is a member of channel
+    case lists:member(ClientPid, St#ch_state.members) of
+        true ->
+            % don't send the message to ourselves
+            Recipients = lists:delete(ClientPid, St#ch_state.members),
+            Data = {request, self(), make_ref(), {message_receive, St#ch_state.channelName, ClientNick, Msg}},
+            lists:foreach((fun(Member) -> Member ! Data end), Recipients),
+            {reply, ok, St};
+        false ->
+            % user hasn't joined the channel - can't send message
+            {reply, {error, user_not_joined, "User isn't a member of " ++ St#ch_state.channelName ++ "."}, St}
+    end;
+
 
 % catch-all handle method
 handle(St, _) ->

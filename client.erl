@@ -20,12 +20,12 @@ initial_state(Nick, GUIAtom, ServerAtom) ->
         channels = []
     }.
 
-% send a general request to destination (server)
+% send a general request to destination (server) with try/catch for exception handling
 send(Destination, Request) ->
     try genserver:request(Destination, Request) of
         Response -> Response
     catch
-        error:connection -> {error, server_not_reached, "Can't reach server."}
+        error:_ -> {error, server_not_reached, "Can't reach server."}
     end.
 
 % handle/2 handles each kind of request from GUI
@@ -60,20 +60,14 @@ handle(St, {leave, Channel}) ->
 
 % Sending message (from GUI, to channel)
 handle(St, {message_send, Channel, Msg}) ->
-    % is server reachable?
-    % request to send a message
-    Request = send(list_to_atom(Channel), {message_send, self(), St#client_st.nick, Msg}),
+    % TODO: check message length and if 0, dont send
+    % ...
+    % send message_send request to server
+    Request = send(St#client_st.server, {message_send, self(), St#client_st.nick, Channel, Msg}),
     case Request of
         ok ->
-            % check if client is a member of channel
-            case lists:member(Channel, St#client_st.channels) of
-                true ->
-                    {reply, Request, St};
-                false ->
-                    % user hasn't joined the channel - can't send message
-                    {reply, {error, user_not_joined, "User isn't a member of " ++ Channel ++ "."}, St}
-            end;
-        Error -> {error, Error, "Connection error - server not reached.", St}
+            {reply, Request, St};
+        Error -> {reply, Error, St}
     end;
 
 % change nickname

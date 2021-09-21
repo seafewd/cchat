@@ -35,9 +35,12 @@ handle(St, {join, ClientPid, ClientNick, Channel}) ->
 	{reply, Response, St#state{nicknames = NewNicknameList, channels = NewChannelsList}};
 
 % client requests to send a message
-handle(St, {message_send, ClientPid, Channel}) ->
-	Response = genserver:request(list_to_atom(Channel), {message_send, ClientPid}),
-	{reply, Response, St};
+handle(St, {message_send, ClientPid, ClientNick, Channel, Msg}) ->
+	Request = genserver:request(list_to_atom(Channel), {message_send, ClientNick, ClientPid, Msg}),
+	case Request of
+		ok -> {reply, Request, St};
+		Error -> {error, Error, St}
+	end;
 
 % client requests to change nickname
 handle(St, {nick, OldNick, NewNick}) ->
