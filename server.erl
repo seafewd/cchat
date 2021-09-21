@@ -74,10 +74,9 @@ handle(St, _) ->
 
 
 % Start a new server process with the given name
-% Do not change the signature of this function.
 start(ServerAtom) ->
     genserver:start(ServerAtom, initialState(), fun handle/2).
 
-% Stop the server process registered to the given name,
+% Stop the server process with the given name
 stop(ServerAtom) ->
 	genserver:stop(ServerAtom).

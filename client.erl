@@ -2,7 +2,6 @@
 -export([handle/2, initial_state/3]).
 
 % This record defines the structure of the state of a client.
-% Add whatever other fields you need.
 -record(client_st, {
     gui, % atom of the GUI process
     nick, % nick/username of the client
@@ -11,7 +10,6 @@
 }).
 
 % Return an initial state record. This is called from GUI.
-% Do not change the signature of this function.
 initial_state(Nick, GUIAtom, ServerAtom) ->
     #client_st{
         nick = Nick,
@@ -37,7 +35,7 @@ send(Destination, Request) ->
 %   - NewState is the updated state of the client
 
 % Join channel
-% send a join request to server with this Pid, client nick and channel
+% send a join channel request to server with this Pid, client nick and channel
 handle(St, {join, Channel}) ->
     case send(St#client_st.server, {join, self(), St#client_st.nick, Channel}) of
         ok ->
@@ -52,6 +50,7 @@ handle(St, {join, Channel}) ->
 handle(St, {leave, Channel}) ->
     case send(St#client_st.server, {leave, self(), Channel}) of
         ok ->
+            % delete the channel from client's channels and update state
             NewChannelsList = lists:delete(Channel, St#client_st.channels),
             {reply, ok, St#client_st{channels = NewChannelsList}};
         Error ->
@@ -60,28 +59,26 @@ handle(St, {leave, Channel}) ->
 
 % Sending message (from GUI, to channel)
 handle(St, {message_send, Channel, Msg}) ->
-    % TODO: check message length and if 0, dont send
-    % ...
-    % send message_send request to server
-    Request = send(St#client_st.server, {message_send, self(), St#client_st.nick, Channel, Msg}),
-    case Request of
-        ok ->
-            {reply, Request, St};
-        Error -> {reply, Error, St}
+    % TODO check message length and if 0, dont send - BROKEN ATM!!!!111
+    case Msg of
+        '[]' -> {reply, no_msg, St};
+        _  ->
+            % send message_send request to server
+            Request = send(St#client_st.server, {message_send, self(), St#client_st.nick, Channel, Msg}),
+            case Request of
+                ok    -> {reply, Request, St};
+                Error -> {reply, Error, St}
+            end
     end;
 
-% change nickname
+% change nickname request
 handle(St, {nick, NewNick}) ->
     case send(St#client_st.server, {nick, St#client_st.nick, NewNick}) of
-        % all good, change nickname
+        % all good, change nickname in client
         ok -> {reply, ok, St#client_st{nick = NewNick}};
         % error, return state
         Error -> {reply, Error, St}
     end;
-
-% ---------------------------------------------------------------------------
-% The cases below do not need to be changed...
-% But you should understand how they work!
 
 % Get current nick
 handle(St, whoami) ->
@@ -94,7 +91,6 @@ handle(St = #client_st{gui = GUI}, {message_receive, Channel, Nick, Msg}) ->
 
 % Quit client via GUI
 handle(St, quit) ->
-    % Any cleanup should happen here, but this is optional
     {reply, ok, St} ;
 
 % Catch-all for any unhandled requests
