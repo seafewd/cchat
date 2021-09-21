@@ -49,7 +49,7 @@ handle(St, {message_send, ClientNick, ClientPid, Msg}) ->
             Recipients = lists:delete(ClientPid, St#ch_state.members),
             Data = {request, self(), make_ref(), {message_receive, St#ch_state.channelName, ClientNick, Msg}},
             % for each Member in Recipients, pass message Data to Member
-            lists:foreach(fun(Member) ->
+            lists:foreach((fun(Member) ->
                 Member ! Data end),
                 Recipients),
             {reply, ok, St};
