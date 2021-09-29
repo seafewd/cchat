@@ -37,7 +37,8 @@ send(Destination, Request) ->
 % Join channel
 % send a join channel request to server with this Pid, client nick and channel
 handle(St, {join, Channel}) ->
-    case send(St#client_st.server, {join, self(), St#client_st.nick, Channel}) of
+    Request = send(St#client_st.server, {join, self(), St#client_st.nick, Channel}),
+    case Request of
         ok ->
             % prepend new channel name to channel list and update client's list of channels
             NewChannelsList = [Channel | St#client_st.channels],
@@ -48,7 +49,8 @@ handle(St, {join, Channel}) ->
 
 % send leave channel request
 handle(St, {leave, Channel}) ->
-    case send(St#client_st.server, {leave, self(), Channel}) of
+    Request = send(St#client_st.server, {leave, self(), Channel}),
+    case Request of
         ok ->
             % delete the channel from client's channels and update state
             NewChannelsList = lists:delete(Channel, St#client_st.channels),
@@ -73,7 +75,8 @@ handle(St, {message_send, Channel, Msg}) ->
 
 % change nickname request
 handle(St, {nick, NewNick}) ->
-    case send(St#client_st.server, {nick, St#client_st.nick, NewNick}) of
+    Request = send(St#client_st.server, {nick, St#client_st.nick, NewNick}),
+    case Request of
         % all good, change nickname in client
         ok -> {reply, ok, St#client_st{nick = NewNick}};
         % error, return state
