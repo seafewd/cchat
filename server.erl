@@ -64,8 +64,9 @@ handle(St, {quit, ClientNick}) ->
 
 % prepare to stop server. kick members from existing channels and delete them
 handle(St, prepare_to_stop) ->
+	io:fwrite("server shutting down...\n"),
 	lists:foreach((fun(Channel) ->
-		channel:kick_members(St),
+		%channel:kick_members(St, Channel),
 		channel:delete(Channel) end),
 		St#state.channels),
 		{reply, ok, St};
