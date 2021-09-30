@@ -49,7 +49,7 @@ handle(St, {join, Channel}) ->
 
 % send leave channel request
 handle(St, {leave, Channel}) ->
-    Request = send(St#client_st.server, {leave, self(), Channel}),
+    Request = genserver:request(list_to_atom(Channel), {leave, self()}),
     case Request of
         ok ->
             % delete the channel from client's channels and update state
@@ -61,12 +61,13 @@ handle(St, {leave, Channel}) ->
 
 % Sending message (from GUI, to channel)
 handle(St, {message_send, Channel, Msg}) ->
+    % TODO check if channel already exists
     % TODO check message length and if 0, dont send - BROKEN ATM!!!!111
     case Msg of
         '[]' -> {reply, no_msg, St};
         _  ->
             % send message_send request to server
-            Request = send(St#client_st.server, {message_send, self(), St#client_st.nick, Channel, Msg}),
+            Request = genserver:request(list_to_atom(Channel), {message_send, St#client_st.nick, self(), Msg}),
             case Request of
                 ok    -> {reply, Request, St};
                 Error -> {reply, Error, St}

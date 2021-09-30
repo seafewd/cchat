@@ -57,9 +57,9 @@ handle(St, {nick, OldNick, NewNick}) ->
 	end;
 
 % handle client leaves channel
-handle(St, {leave, ClientPid, Channel}) ->
+handle(St, {leave, Channel}) ->
 	% set and send response atom
-	Response = genserver:request(list_to_atom(Channel), {leave, ClientPid}),
+	Response = genserver:request(list_to_atom(Channel), {leave, Channel}),
 	{reply, Response, St};
 
 % handle client exit request
@@ -67,6 +67,10 @@ handle(St, {quit, ClientNick}) ->
 	% delete nickname from members list
 	NewNicknameList = lists:delete(ClientNick, St#state.nicknames),
 	{reply, ok, St#state{nicknames=NewNicknameList}};
+
+handle(St {stop_server}) ->
+	% TODO delete channels
+
 
 % catch-all request
 handle(St, _) ->
@@ -79,4 +83,6 @@ start(ServerAtom) ->
 
 % Stop the server process with the given name
 stop(ServerAtom) ->
+	% delete channels
+	genserver:request(stop_server, ServerAtom),
 	genserver:stop(ServerAtom).
