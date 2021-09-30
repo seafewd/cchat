@@ -34,13 +34,7 @@ handle(St, {join, ClientPid, ClientNick, Channel}) ->
 	% send response and update new nicks and channels
 	{reply, Response, St#state{nicknames = NewNicknameList, channels = NewChannelsList}};
 
-% client requests to send a message
-handle(St, {message_send, ClientPid, ClientNick, Channel, Msg}) ->
-	Request = genserver:request(list_to_atom(Channel), {message_send, ClientNick, ClientPid, Msg}),
-	case Request of
-		ok -> {reply, Request, St};
-		Error -> {error, Error, St}
-	end;
+
 
 % client requests to change nickname
 handle(St, {nick, OldNick, NewNick}) ->
@@ -68,9 +62,15 @@ handle(St, {quit, ClientNick}) ->
 	NewNicknameList = lists:delete(ClientNick, St#state.nicknames),
 	{reply, ok, St#state{nicknames=NewNicknameList}};
 
-handle(St {stop_server}) ->
-	% TODO delete channels
+% prepare to stop server. kick members from existing channels and delete them
+handle(St, prepare_to_stop) ->
+	lists:foreach((fun(Channel) ->
+		channel:kick_members(St),
+		channel:delete(Channel) end),
+		St#state.channels),
+		{reply, ok, St};
 
+% TODO handle with ignore all requests pattern match
 
 % catch-all request
 handle(St, _) ->
@@ -83,6 +83,5 @@ start(ServerAtom) ->
 
 % Stop the server process with the given name
 stop(ServerAtom) ->
-	% delete channels
-	genserver:request(stop_server, ServerAtom),
+	genserver:request(ServerAtom, prepare_to_stop),
 	genserver:stop(ServerAtom).

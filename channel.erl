@@ -1,5 +1,5 @@
 -module(channel).
--export([create/1, delete/1]).
+-export([create/1, delete/1, kick_members/1]).
 
 % record with channel name and current members
 -record(ch_state, {
@@ -58,10 +58,19 @@ handle(St, {message_send, ClientNick, ClientPid, Msg}) ->
             {reply, {error, user_not_joined, "User isn't a member of " ++ St#ch_state.channelName ++ "."}, St}
     end;
 
-
 % catch-all handle method
 handle(St, _) ->
     {reply, {error, not_implemented, "This channel can't handle this request."}, St}.
+
+kick_members(St) ->
+    not_implemented.
+    %io:fwrite("helloo").
+%    io:fwrite("hello").
+    %lists:foreach((fun(Member) ->
+    %    io:fwrite("hej") end),
+    %    St#ch_state.members).
+        %genserver:request((Member), {leave, Channel}) end),
+%        leave(St, Member) end),
 
 % create a new channel
 create(Name) ->
@@ -69,4 +78,5 @@ create(Name) ->
 
 % delete a channel
 delete(Name) ->
+    io:fwrite("deleting" ++ Name),
     genserver:stop(list_to_atom(Name)).
