@@ -67,7 +67,7 @@ handle(St, {message_send, Channel, Msg}) ->
         '[]' -> {reply, no_msg, St};
         _  ->
             % send message_send request to server
-            Request = genserver:request(list_to_atom(Channel), {message_send, St#client_st.nick, self(), Msg}),
+            Request = send(list_to_atom(Channel), {message_send, St#client_st.nick, self(), Msg}),
             case Request of
                 ok    -> {reply, Request, St};
                 Error -> {reply, Error, St}

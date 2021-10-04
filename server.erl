@@ -65,11 +65,12 @@ handle(St, {quit, ClientNick}) ->
 % prepare to stop server. kick members from existing channels and delete them
 handle(St, prepare_to_stop) ->
 	io:fwrite("server shutting down...\n"),
+	%channel:kick_members(St),
 	lists:foreach((fun(Channel) ->
-		%channel:kick_members(St, Channel),
-		channel:delete(Channel) end),
-		St#state.channels),
-		{reply, ok, St};
+	%	channel:kick_members(St, Channel) end),
+		channel:delete(St, Channel) end),
+	St#state.channels),
+	{reply, ok, St};
 
 % TODO handle with ignore all requests pattern match
 
