@@ -20,10 +20,10 @@ initial_state(Nick, GUIAtom, ServerAtom) ->
 
 % send a general request to destination (server) with try/catch for exception handling
 send(Destination, Request) ->
-    try genserver:request(Destination, Request) of
+    case catch genserver:request(Destination, Request) of
+        {'EXIT', Reason} -> % if the server process cannot be reached
+                    {error, server_not_reached, Reason};
         Response -> Response
-    catch
-        error:_ -> {error, server_not_reached, "Can't reach server."}
     end.
 
 % handle/2 handles each kind of request from GUI
