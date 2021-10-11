@@ -48,10 +48,11 @@ handle(St, {message_send, ClientNick, ClientPid, Msg}) ->
             % don't send the message to ourselves
             Recipients = lists:delete(ClientPid, St#ch_state.members),
             Data = {request, self(), make_ref(), {message_receive, St#ch_state.channelName, ClientNick, Msg}},
-            % for each Member in Recipients, pass message Data to Member
-            lists:foreach((fun(Member) ->
+            % for each Member in Recipients, spawn new process which passes message Data to Member
+            spawn(fun() -> lists:foreach((fun(Member) ->
                 Member ! Data end),
-                Recipients),
+                Recipients)
+            end),
             {reply, ok, St};
         false ->
             % user hasn't joined the channel - can't send message
