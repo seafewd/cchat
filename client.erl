@@ -95,7 +95,8 @@ handle(St = #client_st{gui = GUI}, {message_receive, Channel, Nick, Msg}) ->
 
 % Quit client via GUI
 handle(St, quit) ->
-    {reply, ok, St} ;
+    Request = send(St#client_st.server, {quit, St#client_st.nick}),
+    {reply, Request, St};
 
 % Catch-all for any unhandled requests
 handle(St, _) ->

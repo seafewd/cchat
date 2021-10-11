@@ -39,7 +39,7 @@ handle(St, {join, ClientPid, ClientNick, Channel}) ->
 % client requests to change nickname
 handle(St, {nick, OldNick, NewNick}) ->
 	case lists:member(NewNick, St#state.nicknames) of
-		% OldNick == NewNick
+		% OldNick same as NewNick
 		true when OldNick =:= NewNick -> {reply, ok, St};
 		% nickname is already in use by another client
 		true -> {reply, {error, nick_taken, "Nickname " ++ NewNick ++ " is already taken. Try another."}, St};
@@ -56,22 +56,21 @@ handle(St, {leave, Channel}) ->
 	Response = genserver:request(list_to_atom(Channel), {leave, Channel}),
 	{reply, Response, St};
 
-% handle client exit request
+% handle client quit request
 handle(St, {quit, ClientNick}) ->
+	io:fwrite("Client has /quit. Deleting client from nickname list.\n"),
 	% delete nickname from members list
 	NewNicknameList = lists:delete(ClientNick, St#state.nicknames),
-	{reply, ok, St#state{nicknames=NewNicknameList}};
+	{reply, ok, St#state{nicknames = NewNicknameList}};
 
-% prepare to stop server. kick members from existing channels and delete them
+% prepare to stop server. delete existing channels
 handle(St, prepare_to_stop) ->
 	io:fwrite("server shutting down...\n"),
-	%channel:kick_members(St),
 	lists:foreach((fun(Channel) ->
 		channel:delete(Channel) end),
 	St#state.channels),
 	{reply, ok, St};
 
-% TODO handle with ignore all requests pattern match
 
 % catch-all request
 handle(St, _) ->
